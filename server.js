@@ -1,6 +1,7 @@
 const express  = require('express')
 const path = require('path')
 const fs = require('fs')
+const cors=  require('cors')
 
 const PORT = 3333
 
@@ -18,9 +19,17 @@ async function saveUserData(userArr) {
     console.log('User Data uploaded')
 }
 
-app.get('/', (requestObj, responseObj) => {
-    responseObj.sendFile(path.join(__dirname, './public/index.html'))
-})
+app.use(express.static('./public'))
+
+app.use(cors())
+// app.get('/', (requestObj, responseObj) => {
+//     responseObj.sendFile(path.join(__dirname, './public/index.html'))
+// })
+
+// app.get('/css/style.css', (requestObj, responseObj) => {
+//     responseObj.sendFile(path.join(__dirname, './public/css/style.css'))
+// })
+
 
 // Opening up the middleware channel to allow json to be sent through from the client
 app.use(express.json())
