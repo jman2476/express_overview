@@ -18,6 +18,10 @@ async function saveUserData(userArr) {
     console.log('User Data uploaded')
 }
 
+app.get('/', (requestObj, responseObj) => {
+    responseObj.sendFile(path.join(__dirname, './public/index.html'))
+})
+
 // Opening up the middleware channel to allow json to be sent through from the client
 app.use(express.json())
 
