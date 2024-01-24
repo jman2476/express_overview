@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { v4 } = require('uuid');
 
 const PORT = 3333;
 
@@ -21,6 +22,12 @@ async function saveUserData(usersArr) {
 // Opening up the middleware channel to allow json to be sent through from the client
 app.use(express.json());
 
+// Share or create a GET route for every file in the public folder
+app.use(express.static('./public'));
+
+// Open CORS to all domains
+// app.use(cors());
+
 // Route to retreive/GET all users from the json database
 app.get('/api/users', async (requestObj, responseObj) => {
   // Read the json file data
@@ -33,18 +40,33 @@ app.get('/api/users', async (requestObj, responseObj) => {
 app.post('/api/users', async (requestObj, responseObj) => {
   // Get the old users array
   const users = await getUserData();
-
-  // Push the body object from the client to our old array
-  users.push(requestObj.body);
+  const userData = requestObj.body;
 
   // Overwrite the old array with the newly updated array
-  await saveUserData(users);
+  if (!users.find(user => user.username === userData.username) && userData.username) {
+    // Push the body object from the client to our old array
 
-  // Respond back to the client
+    userData.id = v4();
+
+    users.push(userData);
+
+    await saveUserData(users);
+
+    return responseObj.send({
+      message: 'User added successfully!'
+    });
+  }
+
   responseObj.send({
-    message: 'User added successfully!'
-  })
+    error: 402,
+    message: 'User already exists'
+  });
+
 });
+
+app.get('/api/users/:id', (requestObj, responseObj) => {
+  console.log(requestObj.params)
+})
 
 app.listen(PORT, () => {
   console.log('Server started on port', PORT);
