@@ -2,67 +2,129 @@ const router = require('express').Router()
 const express = require('express')
 const fs = require('fs')
 const { v4 } = require('uuid')
-const { getUserData, saveUserData } = require('../db/index')
+const db = require('../db/connections')
+// const { getUserData, saveUserData } = require('../db/index')
 
 router.use(express.json())
 
 // gets info when user accesses the api
 router.get('/users', async (requestObj, responseObj) => {
-    // read the json file in
-    const users = await getUserData()
+    // make a query to the db and get all rows from the user table
+    try {
+        const [users] = await db.query('SELECT * FROM users')
 
-    responseObj.send(users)
+        responseObj.json(users)
+    } catch (err) {
+        console.log(err)
+    }
 })
 
 // do a post request for taking in data
 router.post('/users', async (requestObj, responseObj) => {
-    const users = await getUserData()
+    // get the old usrs array
     const userData = requestObj.body
-    console.log(userData)
 
-    if (!users.find(user => user.username === userData.username) && userData.username){
-    userData.id = v4()
+    // check if use exists
+    const [names] = await db.query('SELECT * FROM users WHERE username = ?', [userData.username])
 
-    users.push(requestObj.body)
+    if(names.length) {
+        return responseObj.json({
+            error: 402,
+            message: 'That user already exists'
+        })
+    }
+    
+    //run a query to INSERT a new user into the users table, with our reuqestObj.body data (username, email, password)
+    const [result] = await db.query('INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+     [userData.username, userData.email, userData.password])
+     
+     responseObj.json({
+        message: 'User added to database successfully',
+        insertId: result.insertId
+    })
 
-    await saveUserData(users)
+    // if (!users.find(user => user.username === userData.username) && userData.username){
+    // userData.id = v4()
 
-    responseObj.send('users added')}
-})
+    // users.push(requestObj.body)
+
+    // await saveUserData(users)
+
+    // responseObj.send('users added')}
+    })
 
 router.get('/users/:id', async (requestObj, responseObj) => {
     const user_id = requestObj.params.id
 
-    const users = await getUserData()
+    try {
 
-    const user = users.find(user => user.id === user_id)
+        const [results] = await db.query('SELECT * FROM users WHERE id = ?',
+        [user_id])
 
-    if (user) {
-        return responseObj.send(user)
-    } 
+        if (results) return responseObj.json(results[0])
 
-    responseObj.send({
-        error: 404,
-        message: 'User not found with that ID'
-    })
+        responseObj.json({
+            err: 404,
+            message: 'User not found with that id'
+        })
+    } catch (err) {
+        console.log(err)
+
+    }
+    // query time
+        // db.query('SELECT * FROM users WHERE id = ?',
+        // [user_id],
+        // (err, results) => {
+        //     if (err) return console.log(err)
+
+        //     if (results) {
+        //         return responseObj.json(results[0])
+        //     }
+
+        //     responseObj.json({
+        //         err: 404,
+        //         message: 'User not found with that id'
+        //     })
+        // })
+ 
+
+    // if (user) {
+    //     return responseObj.send(user)
+    // } 
+
+    // responseObj.send({
+    //     error: 404,
+    //     message: 'User not found with that ID'
+    // })
   })
 
 router.delete('/user/:id', async (requestObj, responseObj) => {
-    // get user data
-    const users = await getUserData()
-    // save id from request object
-    const requestID = requestObj.params.id
+   
+    try {
+        const requestID = requestObj.params.id
+        await db.query('DELETE FROM users WHERE id = ?', [requestID])
 
-    // filter out the user mathcing our parameter ID from the users id
-    const filtered = users.filter(userObj => userObj.id !== requestID)
+        responseObj.send({
+            message: 'User deleted successfully'
+        })
+    } catch (err) {
+        console.log(err)
+    }
+    
+    // // get user data
+    // const users = await getUserData()
+    // // save id from request object
+
+    // // filter out the user mathcing our parameter ID from the users id
+    // const filtered = users.filter(userObj => userObj.id !== requestID)
 
 
 
-    await saveUserData(filtered)
+    // await saveUserData(filtered)
 
-    responseObj.send({
-        message: 'User deleted successfully'
-    })
+    // responseObj.send({
+    //     message: 'User deleted successfully'
+    // })
 })
 
 
